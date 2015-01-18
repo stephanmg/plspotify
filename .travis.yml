@@ -1,10 +1,10 @@
 language: perl
 
 perl:
-   - "5.14.2"
+   - "5.14"
 
 install:
-    sudo cpanm --quiet --installdeps --notest . && sudo cpanm --quiet --notest Devel::Cover::Report::Coveralls
+   - cpanm --quiet --notest Devel::Cover::Report::Coveralls
 
 script:
     - PERL5OPT=-MDevel::Cover=-coverage,statement,branch,condition,path,subroutine prove -lrsv t
