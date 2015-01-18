@@ -16,3 +16,5 @@ after_success:
 notifications:
   email:
     - stephan@syntaktischer-zucker.de
+  on_success: always
+  on_failure: always
