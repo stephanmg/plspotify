@@ -13,5 +13,3 @@ script:
 
 after_success:
     - cover -report coveralls
-
-     perl Build.PL && ./Build build && cover -test -report coveralls
