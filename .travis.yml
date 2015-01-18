@@ -9,7 +9,6 @@ install:
 script:
     - PERL5OPT=-MDevel::Cover=-coverage,statement,branch,condition,path,subroutine prove -lrsv t
     - cover
-    - perl 
 
 after_success:
     - cover -report coveralls
