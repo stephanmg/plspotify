@@ -4,7 +4,7 @@ perl:
    - "5.14.2"
 
 install:
-    cpanm --quiet --installdeps --notest . && cpanm --quiet --notest Devel::Cover::Report::Coveralls
+    sudo cpanm --quiet --installdeps --notest . && sudo cpanm --quiet --notest Devel::Cover::Report::Coveralls
 
 script:
     - PERL5OPT=-MDevel::Cover=-coverage,statement,branch,condition,path,subroutine prove -lrsv t
