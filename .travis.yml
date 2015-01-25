@@ -3,6 +3,11 @@ language: perl
 perl:
    - "5.14"
 
+before_install:
+   - apt-get update
+   - apt-get upgrade
+   - apt-get install libmojolicious-perl
+
 install:
    - cpanm --quiet --notest Devel::Cover::Report::Coveralls
 

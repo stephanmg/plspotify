@@ -1,0 +1,109 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+       "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>Raspberry Pi Control Center (RPiCC)</title>
+<style type="text/css">
+  body {
+    color: black; background-color: white;
+    font-size: 100.01%;
+    font-family: Helvetica,Arial,sans-serif;
+    margin: 0; padding: 1em 0;
+    text-align: center;  
+  }
+
+  div#Seite {
+    text-align: left;    
+    margin: 0 auto;     
+    width: 760px;
+    padding: 0;
+    background: #ffffe0 url(hintergrund.gif) repeat-y;
+    border: 2px ridge silver;
+  }
+
+  h1 {
+    font-size: 1.5em;
+    margin: 0; padding: 0.3em;
+    text-align: center;
+    background: #fed url(../../../data/img/raspi.png) no-repeat 100% 45%;
+    border-bottom: 1px solid silver;
+  }
+
+  ul#Navigation {
+    font-size: 0.83em;
+    float: left; width: 200px;
+    margin: 0 0 1.2em; padding: 0;
+  }
+  ul#Navigation li {
+    list-style: none;
+    margin: 0; padding: 0.5em;
+  }
+  ul#Navigation a {
+    display: block;
+    padding: 0.2em;
+    font-weight: bold;
+  }
+  ul#Navigation a:link {
+    color: black; background-color: white;
+  }
+  ul#Navigation a:visited {
+    color: #666; background-color: white;
+  }
+  ul#Navigation a:hover {
+    color: black; background-color: #eee;
+  }
+  ul#Navigation a:active {
+    color: white; background-color: gray;
+  }
+
+  div#Content {
+    margin: 0 0 1em 220px;
+    padding: 0 1em;
+  }
+  * html div#Content {
+    height: 1em;  /* Workaround gegen den 3-Pixel-Bug des Internet Explorer bis Version 6 */
+    margin-bottom: 0;
+  }
+  div#Content h2 {
+    font-size: 1.2em;
+    margin: 0.2em 0;
+    color: navy;
+  }
+  div#Content p {
+    font-size: 1em;
+    margin: 1em 0;
+  }
+
+  p#Footer {
+    clear: both;
+    font-size: 0.83em;
+    margin: 0; padding: 0.1em;
+    text-align: center;
+    background-color: #fed;
+    border-top: 1px solid silver;
+  }
+</style>
+</head>
+<body>
+
+<div id="Seite">
+  <h1>Welcome to your Raspberry Pi Control Center (RPiCC) </h1>
+
+  <ul id="Navigation">
+    <li><a href="einfuehrung.htm">MusicBox</a></li>
+    <li><a href="mehrspaltige.htm">AmbiLight</a></li>
+  </ul>
+
+  <div id="Content">
+    <h2>Welcome</h2>
+     <p> Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. </p>
+
+     <p> Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. </p>
+
+  </div>
+
+  <p id="Footer"> &copy; stephan@syntaktischer-zucker.de </p>
+</div>
+
+</body>
+</html>
