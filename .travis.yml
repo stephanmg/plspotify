@@ -4,9 +4,9 @@ perl:
    - "5.14"
 
 before_install:
-   - apt-get update
-   - apt-get upgrade
-   - apt-get install libmojolicious-perl
+   - sudo apt-get update
+   - sudo apt-get upgrade
+   - sudo apt-get install libmojolicious-perl
 
 install:
    - cpanm --quiet --notest Devel::Cover::Report::Coveralls
