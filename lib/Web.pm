@@ -68,7 +68,7 @@ __DATA__
    background-image: url("/raspi.jpg");
   }
 </style>
-<title>Auswahllisten mit Mehrfachauswahl</title>
+<title>Select LEDs to colorize</title>
 </head>
 <body>
 
