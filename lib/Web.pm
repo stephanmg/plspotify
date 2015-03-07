@@ -6,8 +6,13 @@ use warnings;
 my $times_logged_in = 0;
 use Mojolicious::Lite;
 
+# TODO use DB to store pass/username
 use DBI;
 my $dbh = DBI->connect("dbi:SQLite:database.db","","") or die "Could not connect";
+
+# TODO use DB to store favorites for username
+
+# TODO add page to create user account -> and send email to user 
 
 #use Mojolicious::Sessions;
 #my $sessions = Mojolicious::Sessions->new;
@@ -183,7 +188,7 @@ redirect to /AmbiLight/ and show login error status!
    not logged in, consider logging in: <a href="/AmbiLight/login/"> here </a>
    </p>
   <% } else { %>
-   you are logged in as: $user
+   you are logged in as: <%= $user %>
    </p>
    Your favorites: ... generated favorites here by database, previously login via user and pass from db. done then.
    Add a new favorite <a href="/AmbiLight/add_fav/"> here </a>
