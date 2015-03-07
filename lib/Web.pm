@@ -6,16 +6,25 @@ use warnings;
 my $times_logged_in = 0;
 use Mojolicious::Lite;
 
-# TODO use DB to store pass/username
-use DBI;
-my $dbh = DBI->connect("dbi:SQLite:database.db","","") or die "Could not connect";
+# TODO current color for table is not correct -> needs to be parsed to HEX! and store it in HEX in DB!
 
+# TODO use perl's "settings" abstraction for storing properties i. e. db names or use constant simply!
+
+use DBI;
+
+# TODO use DB to store pass/username
+#
 # TODO use DB to store favorites for username
 
 # TODO add page to create user account -> and send email to user 
 
+### TODO use one db for auth and favs and then use "foreign key" in favs for username from auth db for favorites
+
 # default 60 minutes session timeout
+
+use Crypt::SaltedHash;
 app->sessions->default_expiration(3600);
+#app->secrets(['ASDONHOQIW​@()C3qnv47qb89(((qY*#v89-nB #_nb5yv3q0']);
 
 get '/' => sub {
    $times_logged_in++;
@@ -36,7 +45,16 @@ get '/AmbiLight/' => sub {
    my $options = prep_string();
    my $c = shift;
    my $username = $c->session('user');
-   $c->render(template => 'AmbiLight', options => $options, current_color => $current_color, user => $username);
+
+   my $dbh = connect_db("./data/sqlite/fav.db");
+   # TODO order by has no effect, since we iterate over an hash in an unordered way below
+   my $sql = "SELECT * FROM favorites WHERE user = ? ORDER BY name ASC";
+   my $sth = $dbh->prepare($sql) or die $dbh->errstr;
+   $sth->execute($username) or die $sth->errstr;
+
+   # all favorites
+   my $entries = $sth->fetchall_hashref('id');
+   $c->render(template => 'AmbiLight', options => $options, current_color => $current_color, user => $username, entries => $entries);
 
 };
 
@@ -88,17 +106,34 @@ get '/AmbiLight/logout' => sub {
 
 post '/AmbiLight/login' => sub {
    my $self = shift;
+   if ($self->session('user') eq $self->req->param('username')) {
+      # already logged in
+      $self->redirect_to("/AmbiLight");
+   } else {
    use Mojo::Log;
    my $log = Mojo::Log->new;
    my $username =  $self->req->param('username');
    $log->debug("params: $username");
-   if ($username eq "tina") {
-      $self->session('user' => "tina");
-      $self->redirect_to("/AmbiLight");
-   } else {
-      $self->redirect_to("/AmbiLight/error");
+
+   my $dbh = connect_db("./data/sqlite/auth.db");
+   my $sql = 'SELECT pass FROM users WHERE user = ?';
+   my $sth = $dbh->prepare($sql) or die $dbh->errstr;
+   $sth->execute($username);
+   my $res = $sth->fetchrow_hashref;
+   if ($res) {
+      my $pass = $res->{'pass'};
+      my $csh = Crypt::SaltedHash->new(algorithm => 'SHA-1');
+
+      $csh->add($self->req->param('password'));
+      if (Crypt::SaltedHash->validate($pass, $self->req->param('password'))) {
+         $self->session('user' => $username);
+         $self->redirect_to("/AmbiLight");
+      }
+
+      } else {
+       $self->redirect_to("/AmbiLight/error");
+    }
    }
-   
 };
 
 get '/AmbiLight/error' => sub {
@@ -113,18 +148,78 @@ get '/AmbiLight/add_fav' => sub {
 
 post '/AmbiLight/add_fav' => sub {
    my $self = shift;
-   # TODO add code to add this to the database of favorites for the current user
-   
-   # redirect after favorite has been added to the databse
-   $self->redirect_to('/AmbiLight/');
+   if ($self->session('user')) {
+      # logged in
+      # TODO insert data into table
+      my $dbh = connect_db("./data/sqlite/fav.db");
+      my $sql = 'INSERT INTO favorites (user, name, red, green, blue) values (?, ?, ?, ?, ?)';
+      my $sth = $dbh->prepare($sql) or die $dbh->errstr;
+
+      my $name = $self->req->param('name');
+      my $red = $self->req->param('red');
+      my $green = $self->req->param('green');
+      my $blue = $self->req->param('blue');
+
+      $sth->execute($self->session('user'), $name, $red, $green, $blue);
+      $self->redirect_to("/AmbiLight/");
+      disconnect_db($dbh);
+   } else {
+      # not logged in
+      $self->redirect_to("/AmbiLight/");
+   }
 };
 
 app->start;
 
+
+## {{{ database handling 
+sub connect_db {
+    my $db = shift;
+    my $dbh = "";
+
+    if (!$db) {
+        die("No database name given: $!");
+    } else {
+      print "$db";
+        $dbh = DBI->connect("dbi:SQLite:dbname=".$db) or die $DBI::errstr;
+        # $dbh->do("BEGIN TRANSACTION; "); or die $dbh->errstr; # TODO use transactions
+    }
+    return $dbh;
+}
+
+sub disconnect_db {
+    my $dbh = shift;
+    if (!$dbh) { 
+        die("No database handle given: $!");    
+    } else {
+       # $dbh->do("COMMIT;") or die $dbh->errstr; # TODO use transactions
+       $dbh->disconnect() or die $dbh->errstr;
+    }
+    return 1;
+}
+## }}}
+
+
+
 __DATA__
 @@ AmbiLightAddFav.html.ep
-TODO add fav template code here,i .e. a formular with POST option
-to submit the new template to /AmbiLight/add_fav
+<html>
+<head><title>Login</title></head>
+<body>
+  <form action="/AmbiLight/add_fav" method="post">
+    Favorite Name: <input type="text" name="name"> 
+    Red <input type="text" name="red">
+    Green <input type="text" name="green">
+    Blue <input type="text" name="blue">
+   <p>
+       <input type="submit" value=" Absenden ">
+        <input type="reset" value=" Abbrechen">
+   </p>
+  </form>
+ </body>
+</html>
+
+
 
 @@ AmbiLightLoginError.html.ep
 TODO add more sophisticated login error here, or
@@ -137,7 +232,7 @@ redirect to /AmbiLight/ and show login error status!
 <body>
   <form action="/AmbiLight/login" method="post">
     Name: <input type="text" name="username"> 
-    Age: <input type="password" name="password">
+    Password: <input type="password" name="password">
    <p>
        <input type="submit" value=" Absenden ">
         <input type="reset" value=" Abbrechen">
@@ -182,6 +277,7 @@ redirect to /AmbiLight/ and show login error status!
 <script type="text/javascript" src="/jscolor/jscolor.js"></script>
 <input name="color" class="color" value="<%= $current_color %>">
 </p>
+
 <p>
     <input type="submit" value="Turn lights on">
     <input type="reset" value="Reset selection">
@@ -199,6 +295,54 @@ redirect to /AmbiLight/ and show login error status!
    <p>
    Add a new favorite <a href="/AmbiLight/add_fav/"> here </a>
    </p>
+   
+   <p>
+    <table style="width:100%">
+  <tr>
+    <th>Favorite name</th>
+    <th>Favorite number</th>
+    <th>Date added </th>
+    <th> rot </th>
+    <th> grün </th>
+    <th> blau </th>
+    <th> color choser </th>
+    <th> number of activaitions </th>
+    <th> activate </th>
+   </tr>
+   <% for my $key (reverse sort keys(%{$entries})) { %>
+  <tr>
+      <td> <%= $entries->{$key}->{'name'} %> </td>
+      <td> <%= $entries->{$key}->{'id'} %> </td>
+      <td> not used for now </td>
+      <td> <%= $entries->{$key}->{'red'} %> </td>
+      <td> <%= $entries->{$key}->{'green'} %> </td>
+      <td> <%= $entries->{$key}->{'blue'} %> </td>
+      <td>
+      <form action="/colorize" method=get>
+      <script type="text/javascript" src="/jscolor/jscolor.js"></script>
+      <input name="color" class="color" value="<%=  sprintf("%02x%02x%02x",$entries->{$key}->{'red'}, $entries->{$key}->{'green'}, $entries->{$key}->{'blue'}) %>">
+      </td>
+      <td> not used for now </td>
+      <td> 
+     <p>
+    <select name="LED" size="10" multiple>
+      <% for (my $i = 1; $i <= 50; $i++) { %>
+      <option value="<%=$i%>" selected>
+      <%= $i %>
+      </option>
+      % } %>
+    </select>
+
+
+       <input type="submit" value="Turn lights on">
+       <input type="reset" value="Reset selection">
+      </form>
+      </td>
+  </tr>
+    <% } %>
+</table>
+      <p> you have <%= scalar keys %$entries %> favorites </p> 
+
    <p>
    Logout <a href="/AmbiLight/logout"> here </a>
    </p>
