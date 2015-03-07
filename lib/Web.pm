@@ -96,22 +96,38 @@ get '/AmbiLight/error' => sub {
    $self->render(template => "AmbiLightLoginError");
 };
 
+get '/AmbiLight/add_fav' => sub {
+   my $self = shift;
+   $self->render(template => "AmbiLightAddFav");
+};
+
+post '/AmbiLight/add_fav' => sub {
+   my $self = shift;
+   # TODO add code to add this to the database of favorites for the current user
+   
+   # redirect after favorite has been added to the databse
+   $self->redirect_to('/AmbiLight/');
+};
+
 app->start;
 
-
-
 __DATA__
+@@ AmbiLightAddFav.html.ep
+TODO add fav template code here,i .e. a formular with POST option
+to submit the new template to /AmbiLight/add_fav
+
 @@ AmbiLightLoginError.html.ep
-ERROR
+TODO add more sophisticated login error here, or
+redirect to /AmbiLight/ and show login error status!
 
 @@ AmbiLightLogin.html.ep
 <!DOCTYPE html>
 <html>
-<head><title>People</title></head>
+<head><title>Login</title></head>
 <body>
   <form action="/AmbiLight/login" method="post">
     Name: <input type="text" name="username"> 
-    Age: <input type="password" name="password"
+    Age: <input type="password" name="password">
    <p>
        <input type="submit" value=" Absenden ">
         <input type="reset" value=" Abbrechen">
@@ -167,9 +183,10 @@ ERROR
    not logged in, consider logging in: <a href="/AmbiLight/login/"> here </a>
    </p>
   <% } else { %>
-   you're logged in as: $user
+   you are logged in as: $user
    </p>
    Your favorites: ... generated favorites here by database, previously login via user and pass from db. done then.
+   Add a new favorite <a href="/AmbiLight/add_fav/"> here </a>
 <% } %>
 
 
