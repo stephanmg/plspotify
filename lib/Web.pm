@@ -14,9 +14,8 @@ my $dbh = DBI->connect("dbi:SQLite:database.db","","") or die "Could not connect
 
 # TODO add page to create user account -> and send email to user 
 
-#use Mojolicious::Sessions;
-#my $sessions = Mojolicious::Sessions->new;
-#$sessions->cookie_name('');
+# default 60 minutes session timeout
+app->sessions->default_expiration(3600);
 
 get '/' => sub {
    $times_logged_in++;
@@ -77,9 +76,15 @@ get '/AmbiLight/favs' => sub {
 
 get '/AmbiLight/login' => sub {
    my $self = shift;
-   $self->session("user" => "");
    $self->render(template => "AmbiLightLogin");
 };
+
+get '/AmbiLight/logout' => sub {
+   my $self = shift;
+   $self->session("user" => "");
+   $self->redirect_to("/AmbiLight");
+};
+
 
 post '/AmbiLight/login' => sub {
    my $self = shift;
@@ -191,7 +196,12 @@ redirect to /AmbiLight/ and show login error status!
    you are logged in as: <%= $user %>
    </p>
    Your favorites: ... generated favorites here by database, previously login via user and pass from db. done then.
+   <p>
    Add a new favorite <a href="/AmbiLight/add_fav/"> here </a>
+   </p>
+   <p>
+   Logout <a href="/AmbiLight/logout"> here </a>
+   </p>
 <% } %>
 
 
@@ -310,4 +320,3 @@ redirect to /AmbiLight/ and show login error status!
 </div>
 
 </body>
-</html>
