@@ -6,6 +6,13 @@ use warnings;
 my $times_logged_in = 0;
 use Mojolicious::Lite;
 
+use DBI;
+my $dbh = DBI->connect("dbi:SQLite:database.db","","") or die "Could not connect";
+
+#use Mojolicious::Sessions;
+#my $sessions = Mojolicious::Sessions->new;
+#$sessions->cookie_name('');
+
 get '/' => sub {
    $times_logged_in++;
    my $c = shift;
@@ -24,9 +31,10 @@ my $current_color = "6600FF";
 get '/AmbiLight/' => sub {
    my $options = prep_string();
    my $c = shift;
-   $c->render(template => 'AmbiLight', options => $options, current_color => $current_color);
-};
+   my $username = $c->session('user');
+   $c->render(template => 'AmbiLight', options => $options, current_color => $current_color, user => $username);
 
+};
 
 get '/colorize' => sub {
    my $self = shift;
@@ -49,10 +57,70 @@ get '/colorize' => sub {
    $self->redirect_to('/AmbiLight');
 };
 
+get '/AmbiLight/favs' => sub {
+   my $self = shift;
+   use Mojo::Log;
+   my $log = Mojo::Log->new;
+   my $name = $self->session('user');
+   if ($name eq "") {
+      $self->redirect_to("/AmbiLight/login");
+   } else {
+      $self->redirect_to("/AmbiLight/");
+   }
+   
+};
+
+get '/AmbiLight/login' => sub {
+   my $self = shift;
+   $self->session("user" => "");
+   $self->render(template => "AmbiLightLogin");
+};
+
+post '/AmbiLight/login' => sub {
+   my $self = shift;
+   use Mojo::Log;
+   my $log = Mojo::Log->new;
+   my $username =  $self->req->param('username');
+   $log->debug("params: $username");
+   if ($username eq "tina") {
+      $self->session('user' => "tina");
+      $self->redirect_to("/AmbiLight");
+   } else {
+      $self->redirect_to("/AmbiLight/error");
+   }
+   
+};
+
+get '/AmbiLight/error' => sub {
+   my $self = shift;
+   $self->render(template => "AmbiLightLoginError");
+};
 
 app->start;
 
+
+
 __DATA__
+@@ AmbiLightLoginError.html.ep
+ERROR
+
+@@ AmbiLightLogin.html.ep
+<!DOCTYPE html>
+<html>
+<head><title>People</title></head>
+<body>
+  <form action="/AmbiLight/login" method="post">
+    Name: <input type="text" name="username"> 
+    Age: <input type="password" name="password"
+   <p>
+       <input type="submit" value=" Absenden ">
+        <input type="reset" value=" Abbrechen">
+   </p>
+  </form>
+ </body>
+</html>
+
+
 @@ AmbiLight.html.ep
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
        "http://www.w3.org/TR/html4/strict.dtd">
@@ -93,6 +161,16 @@ __DATA__
     <input type="reset" value="Reset selection">
 </p>
 </form>
+
+<p> Login status:
+ <% if ($user eq "") { %>
+   not logged in, consider logging in: <a href="/AmbiLight/login/"> here </a>
+   </p>
+  <% } else { %>
+   you're logged in as: $user
+   </p>
+   Your favorites: ... generated favorites here by database, previously login via user and pass from db. done then.
+<% } %>
 
 
 </body>
