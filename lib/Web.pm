@@ -155,11 +155,28 @@ post '/AmbiLight/add_fav' => sub {
       my $sql = 'INSERT INTO favorites (user, name, red, green, blue) values (?, ?, ?, ?, ?)';
       my $sth = $dbh->prepare($sql) or die $dbh->errstr;
 
+      use Mojo::Log;
+        my $log = Mojo::Log->new;
       my $name = $self->req->param('name');
       my $red = $self->req->param('red');
       my $green = $self->req->param('green');
       my $blue = $self->req->param('blue');
+      my $color = $self->req->param('fav_color');
+      $log->debug("fav_color: $color");
 
+      # TODO check if red green or blue is empty, if one is empty then we use the color choser!
+      my ($r, $g, $b) = ($color =~ m/((?:\d|[A-F]){2})((?:\d|[A-F]){2})((?:\d|[A-F]){2})/);
+      $green = hex($g);
+      $red = hex($r);
+      $blue = hex($b);
+
+    $log->debug("red: $red");
+    $log->debug("green: $green");
+    $log->debug("blue: $blue");
+   
+
+      
+      
       $sth->execute($self->session('user'), $name, $red, $green, $blue);
       $self->redirect_to("/AmbiLight/");
       disconnect_db($dbh);
@@ -211,6 +228,8 @@ __DATA__
     Red <input type="text" name="red">
     Green <input type="text" name="green">
     Blue <input type="text" name="blue">
+   Color: <script type="text/javascript" src="/jscolor/jscolor.js"></script>
+   <input name="fav_color" class="color" value="FFFFFF">
    <p>
        <input type="submit" value=" Absenden ">
         <input type="reset" value=" Abbrechen">
