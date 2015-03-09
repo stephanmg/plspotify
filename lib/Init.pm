@@ -1,4 +1,4 @@
-package MyInit;
+package Init;
 
 use strict;
 use warnings;
@@ -7,6 +7,7 @@ use DBI;
 use File::Slurp;
 use Crypt::SaltedHash;
 use Exporter;
+
 our @ISA= qw( Exporter );
 our @EXPORT = qw( init_dbs );
 

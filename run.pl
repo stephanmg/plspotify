@@ -23,6 +23,9 @@ use warnings;
 use utf8;
 
 use lib './lib/';
-use MyInit;
 
+use Init;
 init_dbs();
+
+use Auth;
+init_auts();

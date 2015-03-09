@@ -20,6 +20,7 @@ use constant NUMBER_OF_LEDS => 50;
 # variables
 my $current_color = "6600FF";
 my $log = Mojo::Log->new;
+my $flash = "";
 
 # mojo settings
 app->sessions->default_expiration(3600);
@@ -44,7 +45,7 @@ get '/AmbiLight/' => sub {
 
    # all favorites
    my $entries = $sth->fetchall_hashref('id');
-   $self->render(template => 'AmbiLight', options => $options, current_color => $current_color, user => $username, entries => $entries);
+   $self->render(template => 'AmbiLight', options => $options, current_color => $current_color, user => $username, entries => $entries, flash => get_flash_msg());
 };
 ## }}}
 
@@ -107,9 +108,13 @@ post '/AmbiLight/login' => sub {
          if (Crypt::SaltedHash->validate($pass, $self->req->param('password'))) {
             $self->session('user' => $username);
             $self->redirect_to("/AmbiLight");
+         } else {
+            $self->redirect_to("/AmbiLight");
+            set_flash_msg("Wrong password for supplied user.");
          }
       } else {
-         $self->redirect_to("/AmbiLight/error");
+         set_flash_msg("Unknown user/password combination.");
+         $self->redirect_to("/AmbiLight");
       }
    }
 };
@@ -123,13 +128,6 @@ get '/AmbiLight/logout' => sub {
 };
 ## }}}
 
-## {{{ get '/AmbiLight/error' 
-get '/AmbiLight/error' => sub {
-   my $self = shift;
-   $self->render(template => "AmbiLightLoginError");
-};
-## }}}
-
 ## {{{ get '/AmbiLight/add_fav'
 get '/AmbiLight/add_fav' => sub {
    shift->render(template => "AmbiLightAddFav", init_color => INITIAL_COLOR);
@@ -140,7 +138,7 @@ get '/AmbiLight/add_fav' => sub {
 post '/AmbiLight/add_fav' => sub {
    my $self = shift;
    # check if logged in
-   if ($self->session('user') && $self->session('user' ne "") {
+   if ($self->session('user') && $self->session('user') ne "") {
       my $dbh = connect_db("./data/sqlite/ambilight.db");
       my $sql = 'INSERT INTO favorites (user, name, red, green, blue) values (?, ?, ?, ?, ?)';
       my $sth = $dbh->prepare($sql) or die $dbh->errstr;
@@ -167,6 +165,12 @@ post '/AmbiLight/add_fav' => sub {
    } else {
       $self->redirect_to("/AmbiLight/");
    }
+};
+## }}}
+
+## {{{ any '/MusicBox/'
+any '/MusicBox' => sub {
+   shift->render(template => "MusicBox");
 };
 ## }}}
 # }}}
@@ -211,6 +215,18 @@ sub prep_option_string {
    return $str;
 }
 ## }}}
+
+## {{{ set_flash_msg
+sub set_flash_msg {
+   $flash = shift;
+}
+## }}}
+
+## {{{ get_flash_msg 
+sub get_flash_msg {
+   return $flash;
+}
+## }}}
 # }}}
 
 # {{{ Start application
@@ -237,12 +253,6 @@ __DATA__
  </body>
 </html>
 
-
-
-@@ AmbiLightLoginError.html.ep
-TODO add more sophisticated login error here, or
-redirect to /AmbiLight/ and show login error status!
-
 @@ AmbiLightLogin.html.ep
 <!DOCTYPE html>
 <html>
@@ -258,7 +268,6 @@ redirect to /AmbiLight/ and show login error status!
   </form>
  </body>
 </html>
-
 
 @@ AmbiLight.html.ep
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
@@ -353,6 +362,11 @@ redirect to /AmbiLight/ and show login error status!
    <p>
 
 
+<p>
+<% if ($flash ne "") { %>
+   <%= $flash %>
+<% } %>
+</p>
 <% if (!defined($user) || $user eq "") { %>
    Login: <a href="/AmbiLight/login/"> here </a>
    </p>
@@ -480,3 +494,6 @@ redirect to /AmbiLight/ and show login error status!
 </div>
 
 </body>
+
+@@MusicBox.html.ep
+Currently not implemented
