@@ -139,7 +139,8 @@ get '/AmbiLight/add_fav' => sub {
 ## {{{ post '/AmbiLight/add_fav'
 post '/AmbiLight/add_fav' => sub {
    my $self = shift;
-   if ($self->session('user')) {
+   # check if logged in
+   if ($self->session('user') && $self->session('user' ne "") {
       my $dbh = connect_db("./data/sqlite/ambilight.db");
       my $sql = 'INSERT INTO favorites (user, name, red, green, blue) values (?, ?, ?, ?, ?)';
       my $sth = $dbh->prepare($sql) or die $dbh->errstr;
