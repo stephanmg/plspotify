@@ -28,4 +28,4 @@ use Init;
 init_dbs();
 
 use Auth;
-init_auts();
+init_auths();

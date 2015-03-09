@@ -144,8 +144,13 @@ post '/AmbiLight/add_fav' => sub {
    # check if logged in
    if ($self->session('user') && $self->session('user') ne "") {
       my $dbh = connect_db(DATABASE);
-      my $sql = 'INSERT INTO favorites (user, name, red, green, blue) values (?, ?, ?, ?, ?)';
+      my $sql = "SELECT COUNT(*) FROM favorites WHERE user = ?";
       my $sth = $dbh->prepare($sql) or die $dbh->errstr;
+      my ($no_entries) = $sth->fetchrow_array();
+
+      $sql = 'INSERT INTO favorites (user, name, red, green, blue, number) values (?, ?, ?, ?, ?, ?)';
+      $sth = $dbh->prepare($sql) or die $dbh->errstr;
+
       my $name = $self->req->param('name');
       my $red = $self->req->param('red');
       my $green = $self->req->param('green');
@@ -163,7 +168,7 @@ post '/AmbiLight/add_fav' => sub {
          $name = DEFAULT_FAVORITE_NAME;
       }
 
-      $sth->execute($self->session('user'), $name, $red, $green, $blue);
+      $sth->execute($self->session('user'), $name, $red, $green, $blue, $no_entries+1);
       $self->redirect_to("/AmbiLight/");
       disconnect_db($dbh);
    } else {
