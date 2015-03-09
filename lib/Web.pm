@@ -1,18 +1,27 @@
 #/usr/bin/env perl
 
+# consistency
 use strict;
 use warnings;
 
+# mojo
 use Mojolicious::Lite;
 use Mojo::Log;
-use Crypt::SaltedHash;
-use DBI;
 
-my $current_color = "6600FF";
+# common
+use DBI;
+use Crypt::SaltedHash;
+
+# real constants
 use constant INITIAL_COLOR => "FFFFFF";
 use constant DEFAULT_FAVORITE_NAME => "Favorite";
-my $num_LEDS = 50;
+use constant NUMBER_OF_LEDS => 50;
+
+# variables
+my $current_color = "6600FF";
 my $log = Mojo::Log->new;
+
+# mojo settings
 app->sessions->default_expiration(3600);
 
 # {{{ Routes
@@ -25,7 +34,7 @@ get '/' => sub {
 ## {{{ get '/AmbiLight/' 
 get '/AmbiLight/' => sub {
    my $self = shift;
-   my $options = prep_option_string($num_LEDS);
+   my $options = prep_option_string(NUMBER_OF_LEDS);
    my $username = $self->session('user');
 
    my $dbh = connect_db("./data/sqlite/ambilight.db");
@@ -43,6 +52,19 @@ get '/AmbiLight/' => sub {
 get '/AmbiLight/colorize' => sub {
    my $self = shift;
    my @names = $self->param;
+
+   my $fav = $self->req->param('fav');
+   $log->debug("FAV: " + $fav);
+   my $dbh = connect_db("./data/sqlite/ambilight.db");
+   
+   my $sql = "SELECT activations FROM favorites WHERE id = ?";
+   my $sth = $dbh->prepare($sql) or die $dbh->errstr;
+   $sth->execute($fav);
+   my $number_of_activations = $sth->fetchrow_hashref->{activations};
+
+   $sql = 'UPDATE favorites SET activations = ? WHERE id = ?';
+   $sth = $dbh->prepare($sql) or die $dbh->errstr;
+   $sth->execute($number_of_activations+1, $fav);
 
    my (@active_leds) = ($self->req->url =~ m/LED=(\d+)/g);
    $log->debug("@active_leds");
@@ -279,36 +301,24 @@ redirect to /AmbiLight/ and show login error status!
 </p>
 </form>
 
-<p> Login status:
- <% if (!defined($user) || $user eq "") { %>
-   not logged in, consider logging in: <a href="/AmbiLight/login/"> here </a>
-   </p>
-  <% } else { %>
-   you are logged in as: <%= $user %>
-   </p>
-   Your favorites: ... generated favorites here by database, previously login via user and pass from db. done then.
    <p>
-   Add a new favorite <a href="/AmbiLight/add_fav/"> here </a>
-   </p>
-   
-   <p>
+   Your current favorites:
+  
     <table style="width:100%">
   <tr>
     <th>Favorite name</th>
     <th>Favorite number</th>
-    <th>Date added </th>
-    <th> rot </th>
-    <th> grün </th>
-    <th> blau </th>
-    <th> color choser </th>
-    <th> number of activaitions </th>
-    <th> activate </th>
+    <th> Red </th>
+    <th> Green </th>
+    <th> Blue </th>
+    <th> Color Choser </th>
+    <th> Number of Activations </th>
+    <th> Colorize </th>
    </tr>
    <% for my $key (reverse sort keys(%{$entries})) { %>
   <tr>
       <td> <%= $entries->{$key}->{'name'} %> </td>
       <td> <%= $entries->{$key}->{'id'} %> </td>
-      <td> not used for now </td>
       <td> <%= $entries->{$key}->{'red'} %> </td>
       <td> <%= $entries->{$key}->{'green'} %> </td>
       <td> <%= $entries->{$key}->{'blue'} %> </td>
@@ -316,8 +326,9 @@ redirect to /AmbiLight/ and show login error status!
       <form action="/AmbiLight/colorize" method=get>
       <script type="text/javascript" src="/jscolor/jscolor.js"></script>
       <input name="color" class="color" value="<%=  uc sprintf("%02x%02x%02x",$entries->{$key}->{'red'}, $entries->{$key}->{'green'}, $entries->{$key}->{'blue'}) %>">
+      <input type="hidden" name="fav" value=" <%= $entries->{$key}->{'id'} %>">
       </td>
-      <td> not used for now </td>
+      <td> <%= $entries->{$key}->{'activations'} %> </td>
       <td> 
      <p>
     <select name="LED" size="10" multiple>
@@ -336,10 +347,19 @@ redirect to /AmbiLight/ and show login error status!
   </tr>
     <% } %>
 </table>
-      <p> you have <%= scalar keys %$entries %> favorites </p> 
-
+   <p> You have <%= scalar keys %$entries %> favorites in total. 
+   </p> 
    <p>
-   Logout <a href="/AmbiLight/logout"> here </a>
+
+
+<% if (!defined($user) || $user eq "") { %>
+   Login: <a href="/AmbiLight/login/"> here </a>
+   </p>
+  <% } else { %>
+   <p>
+   Add a new favorite <a href="/AmbiLight/add_fav/"> here </a>
+   </p>
+  <a href="/AmbiLight/logout"> Logout </a> (logged in as: <%= $user %>)
    </p>
 <% } %>
 
