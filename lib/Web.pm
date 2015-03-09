@@ -8,16 +8,9 @@ use Mojo::Log;
 use Crypt::SaltedHash;
 use DBI;
 
-# TODO current color for table is not correct -> needs to be parsed to HEX! and store it in HEX in DB!
-
-# TODO use perl's "settings" abstraction for storing properties i. e. db names or use constant simply!
-
-# TODO use DB to store pass/username
-# TODO use DB to store favorites for username
-
-### TODO use one db for auth and favs and then use "foreign key" in favs for username from auth db for favorites
-
 my $current_color = "6600FF";
+use constant INITIAL_COLOR => "FFFFFF";
+use constant DEFAULT_FAVORITE_NAME => "Favorite";
 my $num_LEDS = 50;
 my $log = Mojo::Log->new;
 app->sessions->default_expiration(3600);
@@ -35,7 +28,7 @@ get '/AmbiLight/' => sub {
    my $options = prep_option_string($num_LEDS);
    my $username = $self->session('user');
 
-   my $dbh = connect_db("./data/sqlite/fav.db");
+   my $dbh = connect_db("./data/sqlite/ambilight.db");
    my $sql = "SELECT * FROM favorites WHERE user = ? ORDER BY name ASC";
    my $sth = $dbh->prepare($sql) or die $dbh->errstr;
    $sth->execute($username) or die $sth->errstr;
@@ -78,7 +71,7 @@ post '/AmbiLight/login' => sub {
       $self->redirect_to("/AmbiLight");
    } else {
       my $username =  $self->req->param('username');
-      my $dbh = connect_db("./data/sqlite/auth.db");
+      my $dbh = connect_db("./data/sqlite/ambilight.db");
       my $sql = 'SELECT pass FROM users WHERE user = ?';
       my $sth = $dbh->prepare($sql) or die $dbh->errstr;
 
@@ -117,7 +110,7 @@ get '/AmbiLight/error' => sub {
 
 ## {{{ get '/AmbiLight/add_fav'
 get '/AmbiLight/add_fav' => sub {
-   shift->render(template => "AmbiLightAddFav");
+   shift->render(template => "AmbiLightAddFav", init_color => INITIAL_COLOR);
 };
 ## }}}
 
@@ -125,7 +118,7 @@ get '/AmbiLight/add_fav' => sub {
 post '/AmbiLight/add_fav' => sub {
    my $self = shift;
    if ($self->session('user')) {
-      my $dbh = connect_db("./data/sqlite/fav.db");
+      my $dbh = connect_db("./data/sqlite/ambilight.db");
       my $sql = 'INSERT INTO favorites (user, name, red, green, blue) values (?, ?, ?, ?, ?)';
       my $sth = $dbh->prepare($sql) or die $dbh->errstr;
       my $name = $self->req->param('name');
@@ -139,6 +132,10 @@ post '/AmbiLight/add_fav' => sub {
          $green = hex($g);
          $red = hex($r);
          $blue = hex($b);
+      }
+   
+      if ( $name eq "") {
+         $name = DEFAULT_FAVORITE_NAME;
       }
 
       $sth->execute($self->session('user'), $name, $red, $green, $blue);
@@ -208,7 +205,7 @@ __DATA__
     Green <input type="text" name="green">
     Blue <input type="text" name="blue">
    Color: <script type="text/javascript" src="/jscolor/jscolor.js"></script>
-   <input name="fav_color" class="color" value="FFFFFF">
+   <input name="fav_color" class="color" value="<%= $init_color %>">
    <p>
        <input type="submit" value=" Absenden ">
         <input type="reset" value=" Abbrechen">
@@ -318,7 +315,7 @@ redirect to /AmbiLight/ and show login error status!
       <td>
       <form action="/AmbiLight/colorize" method=get>
       <script type="text/javascript" src="/jscolor/jscolor.js"></script>
-      <input name="color" class="color" value="<%=  sprintf("%02x%02x%02x",$entries->{$key}->{'red'}, $entries->{$key}->{'green'}, $entries->{$key}->{'blue'}) %>">
+      <input name="color" class="color" value="<%=  uc sprintf("%02x%02x%02x",$entries->{$key}->{'red'}, $entries->{$key}->{'green'}, $entries->{$key}->{'blue'}) %>">
       </td>
       <td> not used for now </td>
       <td> 

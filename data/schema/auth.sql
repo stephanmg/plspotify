@@ -1,7 +1,6 @@
-create table if not exists users (
-  id integer primary key autoincrement,
-  user string not null,
-  pass string not null,
-  email string,
-  about string
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user STRING NOT NULL,
+  pass STRING NOT NULL,
+  about STRING NOT NULL
 );

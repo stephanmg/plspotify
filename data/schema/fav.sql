@@ -1,8 +1,9 @@
-create table if not exists favorites (
-  id integer primary key autoincrement,
-  name string not null,
-  user string not null,
-  red integer not null,
-  green integer not null,
-  blue integer not null
-);
+CREATE TABLE IF NOT EXISTS favorites (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name STRING NOT NULL,
+  user STRING NOT NULL,
+  red INTEGER NOT NULL,
+  green INTEGER NOT NULL,
+  blue INTEGER NOT NULL,
+  FOREIGN KEY(user) REFERENCES AUTH(user)
+)

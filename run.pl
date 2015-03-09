@@ -25,5 +25,4 @@ use utf8;
 use lib './lib/';
 use MyInit;
 
-init_auth();
-init_favs();
+init_dbs();

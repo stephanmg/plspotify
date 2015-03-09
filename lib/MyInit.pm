@@ -8,52 +8,46 @@ use File::Slurp;
 use Crypt::SaltedHash;
 use Exporter;
 our @ISA= qw( Exporter );
-our @EXPORT = qw( init_auth init_favs );
+our @EXPORT = qw( init_dbs );
 
-# initialize auth db {{{
-sub init_auth {
-        my $dbh = DBI->connect("dbi:SQLite:dbname=./data/sqlite/auth.db") or
-                die $DBI::errstr;
-        my $schema = read_file('./data/schema/auth.sql');
-  $dbh->do("BEGIN TRANSACTION;") or die $dbh->errstr;
-        $dbh->do($schema) or die $dbh->errstr;
+sub init_dbs {
+   # connect to db
+   my $dbh = DBI->connect("dbi:SQLite:dbname=./data/sqlite/ambilight.db") or die $DBI::errstr;
 
-        my $sql = 'insert into users (user, pass) values (?, ?)';
-        my $sth = $dbh->prepare($sql) or die $dbh->errstr;
+   # variables to be used
+   my $sql;
+   my $sth;
+   my $schema;
+   my $csh;
 
- my $csh = Crypt::SaltedHash->new(algorithm => 'SHA-1');
- $csh->add('stephan');
-        $sth->execute("stephan", $csh->generate) or die $sth->errstr;
+   # create auth table
+   $schema = read_file('./data/schema/auth.sql');
+   $dbh->do("BEGIN TRANSACTION;") or die $dbh->errstr;
+   $dbh->do($schema) or die $dbh->errstr;
+   $dbh->do("COMMIT;") or die $dbh->errstr;
 
-        $sql = 'insert into users (user, pass) values (?, ?)';
-        $sth = $dbh->prepare($sql) or die $dbh->errstr;
+   # add some others
+   $sql = 'insert into users (user, pass, about) values (?, ?, ?)';
+   $sth = $dbh->prepare($sql) or die $dbh->errstr;
+   
+   $csh = Crypt::SaltedHash->new(algorithm => 'SHA-1');
+   $dbh->do("BEGIN TRANSACTION;");
+   $csh->add('stephan');
+   $sth->execute("stephan", $csh->generate, "Stephan's user account") or die $sth->errstr;
+   $dbh->do("COMMIT;") or die $dbh->errstr;
 
- $csh = Crypt::SaltedHash->new(algorithm => 'SHA-1');
- $csh->add('tina');
-        $sth->execute("tina", $csh->generate) or die $sth->errstr;
+   $dbh->do("BEGIN TRANSACTION;");
+   $csh = Crypt::SaltedHash->new(algorithm => 'SHA-1');
+   $csh->add('tina');
+   $sth->execute("tina", $csh->generate, "Tina's user account") or die $sth->errstr;
+   $dbh->do("COMMIT;") or die $dbh->errstr;
+   
+   # create fav database
+   $dbh->do("BEGIN TRANSACTION;");
+   $schema = read_file('./data/schema/fav.sql');
+   $dbh->do($schema) or die $dbh->errstr;
+   $dbh->do("COMMIT;") or die $dbh->errstr;
 
-        $sql = 'insert into users (user, pass) values (?, ?)';
-        $sth = $dbh->prepare($sql) or die $dbh->errstr;
-
- $csh = Crypt::SaltedHash->new(algorithm => 'SHA-1');
- $csh->add('test');
-        $sth->execute("admin", $csh->generate) or die $sth->errstr;
-  $dbh->do("COMMIT;") or die $dbh->errstr;
-
- $dbh->disconnect() or die $dbh->errstr;
+   # disconnect from db
+   $dbh->disconnect() or die $dbh->errstr;
 }
-# }}}
-
-# initialize favorites db {{{
-sub init_favs {
-        my $db = DBI->connect("dbi:SQLite:dbname=./data/sqlite/fav.db") or
-                die $DBI::errstr;
-    
-$db->do("BEGIN TRANSACTION;");
-        my $schema = read_file('./data/schema/fav.sql');
-        $db->do($schema) or die $db->errstr;
- $db->do("COMMIT;") or die $db->errstr;
-
-  $db->disconnect() or die $db->errstr;
-}
-# }}}
