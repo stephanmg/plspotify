@@ -3,69 +3,53 @@
 use strict;
 use warnings;
 
-my $times_logged_in = 0;
 use Mojolicious::Lite;
+use Mojo::Log;
+use Crypt::SaltedHash;
+use DBI;
 
 # TODO current color for table is not correct -> needs to be parsed to HEX! and store it in HEX in DB!
 
 # TODO use perl's "settings" abstraction for storing properties i. e. db names or use constant simply!
 
-use DBI;
-
 # TODO use DB to store pass/username
-#
 # TODO use DB to store favorites for username
-
-# TODO add page to create user account -> and send email to user 
 
 ### TODO use one db for auth and favs and then use "foreign key" in favs for username from auth db for favorites
 
-# default 60 minutes session timeout
-
-use Crypt::SaltedHash;
-app->sessions->default_expiration(3600);
-#app->secrets(['ASDONHOQIW​@()C3qnv47qb89(((qY*#v89-nB #_nb5yv3q0']);
-
-get '/' => sub {
-   $times_logged_in++;
-   my $c = shift;
-   $c->render(template => 'index', logged_in => $times_logged_in);
-};
-
-sub prep_string {
-   my $str = "";
-   for (my $i = 0; $i < 50; $i++) {
-      $str .= "\<option\> $i \</option\>\n";
-   }
-   return $str;
-}
-
 my $current_color = "6600FF";
+my $num_LEDS = 50;
+my $log = Mojo::Log->new;
+app->sessions->default_expiration(3600);
+
+# {{{ Routes
+## {{{ get '/'
+get '/' => sub {
+   shift->render(template => 'index');
+};
+## }}}
+
+## {{{ get '/AmbiLight/' 
 get '/AmbiLight/' => sub {
-   my $options = prep_string();
-   my $c = shift;
-   my $username = $c->session('user');
+   my $self = shift;
+   my $options = prep_option_string($num_LEDS);
+   my $username = $self->session('user');
 
    my $dbh = connect_db("./data/sqlite/fav.db");
-   # TODO order by has no effect, since we iterate over an hash in an unordered way below
    my $sql = "SELECT * FROM favorites WHERE user = ? ORDER BY name ASC";
    my $sth = $dbh->prepare($sql) or die $dbh->errstr;
    $sth->execute($username) or die $sth->errstr;
 
    # all favorites
    my $entries = $sth->fetchall_hashref('id');
-   $c->render(template => 'AmbiLight', options => $options, current_color => $current_color, user => $username, entries => $entries);
-
+   $self->render(template => 'AmbiLight', options => $options, current_color => $current_color, user => $username, entries => $entries);
 };
+## }}}
 
-get '/colorize' => sub {
+## {{{ get '/AmbiLight/colorize' 
+get '/AmbiLight/colorize' => sub {
    my $self = shift;
-   use Mojo::Log;
-
-   my $log = Mojo::Log->new;
-   my @names       = $self->param;
-   $log->debug("@names");
-   $log->debug($self->req->url);
+   my @names = $self->param;
 
    my (@active_leds) = ($self->req->url =~ m/LED=(\d+)/g);
    $log->debug("@active_leds");
@@ -73,123 +57,103 @@ get '/colorize' => sub {
    my ($r, $g, $b) = ($self->req->url =~ m/color=((?:\d|[A-F]){2})((?:\d|[A-F]){2})((?:\d|[A-F]){2})/);
    $log->debug("$r, $g, $b");
    
-   # execute here the python script to activate the leds
+   # execute the python script to activate the LEDS: TODO we can use also perl and send data to DMX server directly
    system("echo 'command -r $r -g $g -b $b'");
    $current_color = "$r$g$b";
    $self->redirect_to('/AmbiLight');
 };
+## }}}
 
-get '/AmbiLight/favs' => sub {
-   my $self = shift;
-   use Mojo::Log;
-   my $log = Mojo::Log->new;
-   my $name = $self->session('user');
-   if ($name eq "") {
-      $self->redirect_to("/AmbiLight/login");
-   } else {
-      $self->redirect_to("/AmbiLight/");
-   }
-   
-};
-
+## {{{ get '/AmbiLight/login'
 get '/AmbiLight/login' => sub {
    my $self = shift;
    $self->render(template => "AmbiLightLogin");
 };
+## }}}
+#
+## {{{ post '/AmbiLight/login'
+post '/AmbiLight/login' => sub {
+   my $self = shift;
+   if ($self->session('user') eq $self->req->param('username')) {
+      $self->redirect_to("/AmbiLight");
+   } else {
+      my $username =  $self->req->param('username');
+      my $dbh = connect_db("./data/sqlite/auth.db");
+      my $sql = 'SELECT pass FROM users WHERE user = ?';
+      my $sth = $dbh->prepare($sql) or die $dbh->errstr;
 
+      $sth->execute($username);
+      my $res = $sth->fetchrow_hashref;
+      if ($res) {
+         my $pass = $res->{'pass'};
+         my $csh = Crypt::SaltedHash->new(algorithm => 'SHA-1');
+
+         $csh->add($self->req->param('password'));
+         if (Crypt::SaltedHash->validate($pass, $self->req->param('password'))) {
+            $self->session('user' => $username);
+            $self->redirect_to("/AmbiLight");
+         }
+      } else {
+         $self->redirect_to("/AmbiLight/error");
+      }
+   }
+};
+## }}}
+
+## {{{ get '/AmbiLight/logout' 
 get '/AmbiLight/logout' => sub {
    my $self = shift;
    $self->session("user" => "");
    $self->redirect_to("/AmbiLight");
 };
+## }}}
 
-
-post '/AmbiLight/login' => sub {
-   my $self = shift;
-   if ($self->session('user') eq $self->req->param('username')) {
-      # already logged in
-      $self->redirect_to("/AmbiLight");
-   } else {
-   use Mojo::Log;
-   my $log = Mojo::Log->new;
-   my $username =  $self->req->param('username');
-   $log->debug("params: $username");
-
-   my $dbh = connect_db("./data/sqlite/auth.db");
-   my $sql = 'SELECT pass FROM users WHERE user = ?';
-   my $sth = $dbh->prepare($sql) or die $dbh->errstr;
-   $sth->execute($username);
-   my $res = $sth->fetchrow_hashref;
-   if ($res) {
-      my $pass = $res->{'pass'};
-      my $csh = Crypt::SaltedHash->new(algorithm => 'SHA-1');
-
-      $csh->add($self->req->param('password'));
-      if (Crypt::SaltedHash->validate($pass, $self->req->param('password'))) {
-         $self->session('user' => $username);
-         $self->redirect_to("/AmbiLight");
-      }
-
-      } else {
-       $self->redirect_to("/AmbiLight/error");
-    }
-   }
-};
-
+## {{{ get '/AmbiLight/error' 
 get '/AmbiLight/error' => sub {
    my $self = shift;
    $self->render(template => "AmbiLightLoginError");
 };
+## }}}
 
+## {{{ get '/AmbiLight/add_fav'
 get '/AmbiLight/add_fav' => sub {
-   my $self = shift;
-   $self->render(template => "AmbiLightAddFav");
+   shift->render(template => "AmbiLightAddFav");
 };
+## }}}
 
+## {{{ post '/AmbiLight/add_fav'
 post '/AmbiLight/add_fav' => sub {
    my $self = shift;
    if ($self->session('user')) {
-      # logged in
-      # TODO insert data into table
       my $dbh = connect_db("./data/sqlite/fav.db");
       my $sql = 'INSERT INTO favorites (user, name, red, green, blue) values (?, ?, ?, ?, ?)';
       my $sth = $dbh->prepare($sql) or die $dbh->errstr;
-
-      use Mojo::Log;
-        my $log = Mojo::Log->new;
       my $name = $self->req->param('name');
       my $red = $self->req->param('red');
       my $green = $self->req->param('green');
       my $blue = $self->req->param('blue');
       my $color = $self->req->param('fav_color');
-      $log->debug("fav_color: $color");
 
-      # TODO check if red green or blue is empty, if one is empty then we use the color choser!
-      my ($r, $g, $b) = ($color =~ m/((?:\d|[A-F]){2})((?:\d|[A-F]){2})((?:\d|[A-F]){2})/);
-      $green = hex($g);
-      $red = hex($r);
-      $blue = hex($b);
+      if ( ($green eq "") || ($red eq "") || ($blue eq "") ) {
+         my ($r, $g, $b) = ($color =~ m/((?:\d|[A-F]){2})((?:\d|[A-F]){2})((?:\d|[A-F]){2})/);
+         $green = hex($g);
+         $red = hex($r);
+         $blue = hex($b);
+      }
 
-    $log->debug("red: $red");
-    $log->debug("green: $green");
-    $log->debug("blue: $blue");
-   
-
-      
-      
       $sth->execute($self->session('user'), $name, $red, $green, $blue);
       $self->redirect_to("/AmbiLight/");
       disconnect_db($dbh);
    } else {
-      # not logged in
       $self->redirect_to("/AmbiLight/");
    }
 };
+## }}}
+# }}}
 
-app->start;
-
-
-## {{{ database handling 
+# {{{ Helpers
+## {{{ DB handling
+## {{{ connect
 sub connect_db {
     my $db = shift;
     my $dbh = "";
@@ -197,26 +161,41 @@ sub connect_db {
     if (!$db) {
         die("No database name given: $!");
     } else {
-      print "$db";
         $dbh = DBI->connect("dbi:SQLite:dbname=".$db) or die $DBI::errstr;
-        # $dbh->do("BEGIN TRANSACTION; "); or die $dbh->errstr; # TODO use transactions
     }
     return $dbh;
 }
+## }}}
 
+## {{{ disconnect
 sub disconnect_db {
     my $dbh = shift;
     if (!$dbh) { 
         die("No database handle given: $!");    
+        return 0;
     } else {
-       # $dbh->do("COMMIT;") or die $dbh->errstr; # TODO use transactions
        $dbh->disconnect() or die $dbh->errstr;
     }
     return 1;
 }
 ## }}}
+## }}}
 
+## {{{ prepare option string for LEDs
+sub prep_option_string {
+   my $num_leds = shift;
+   my $str = "";
+   for (my $i = 0; $i < $num_leds; $i++) {
+      $str .= "\<option\> $i \</option\>\n";
+   }
+   return $str;
+}
+## }}}
+# }}}
 
+# {{{ Start application
+app->start;
+# }}}
 
 __DATA__
 @@ AmbiLightAddFav.html.ep
@@ -282,7 +261,7 @@ redirect to /AmbiLight/ and show login error status!
 
 <h1>Select LEDs to colorize</h1>
 
-<form action="/colorize" method=get>
+<form action="/AmbiLight/colorize" method=get>
   <p>
     <select name="LED" size="10" multiple>
       <% for (my $i = 1; $i <= 50; $i++) { %>
@@ -304,7 +283,7 @@ redirect to /AmbiLight/ and show login error status!
 </form>
 
 <p> Login status:
- <% if ($user eq "") { %>
+ <% if (!defined($user) || $user eq "") { %>
    not logged in, consider logging in: <a href="/AmbiLight/login/"> here </a>
    </p>
   <% } else { %>
@@ -337,7 +316,7 @@ redirect to /AmbiLight/ and show login error status!
       <td> <%= $entries->{$key}->{'green'} %> </td>
       <td> <%= $entries->{$key}->{'blue'} %> </td>
       <td>
-      <form action="/colorize" method=get>
+      <form action="/AmbiLight/colorize" method=get>
       <script type="text/javascript" src="/jscolor/jscolor.js"></script>
       <input name="color" class="color" value="<%=  sprintf("%02x%02x%02x",$entries->{$key}->{'red'}, $entries->{$key}->{'green'}, $entries->{$key}->{'blue'}) %>">
       </td>
