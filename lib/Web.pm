@@ -1,4 +1,5 @@
 #/usr/bin/env perl
+## author stephanmg
 
 # consistency
 use strict;
@@ -12,10 +13,12 @@ use Mojo::Log;
 use DBI;
 use Crypt::SaltedHash;
 
-# real constants
+# constants
 use constant INITIAL_COLOR => "FFFFFF";
 use constant DEFAULT_FAVORITE_NAME => "Favorite";
 use constant NUMBER_OF_LEDS => 50;
+use constant DATABASE => "./data/sqlite/ambilight.db";
+use constant SECRET_PASSPHRASE => "42 is the answer";
 
 # variables
 my $current_color = "6600FF";
@@ -24,6 +27,7 @@ my $flash = "";
 
 # mojo settings
 app->sessions->default_expiration(3600);
+app->secrets([SECRET_PASSPHRASE]);
 
 # {{{ Routes
 ## {{{ get '/'
@@ -38,7 +42,7 @@ get '/AmbiLight/' => sub {
    my $options = prep_option_string(NUMBER_OF_LEDS);
    my $username = $self->session('user');
 
-   my $dbh = connect_db("./data/sqlite/ambilight.db");
+   my $dbh = connect_db(DATABASE);
    my $sql = "SELECT * FROM favorites WHERE user = ? ORDER BY name ASC";
    my $sth = $dbh->prepare($sql) or die $dbh->errstr;
    $sth->execute($username) or die $sth->errstr;
@@ -56,7 +60,7 @@ get '/AmbiLight/colorize' => sub {
 
    my $fav = $self->req->param('fav');
    $log->debug("FAV: " + $fav);
-   my $dbh = connect_db("./data/sqlite/ambilight.db");
+   my $dbh = connect_db(DATABASE);
    
    my $sql = "SELECT activations FROM favorites WHERE id = ?";
    my $sth = $dbh->prepare($sql) or die $dbh->errstr;
@@ -73,7 +77,7 @@ get '/AmbiLight/colorize' => sub {
    my ($r, $g, $b) = ($self->req->url =~ m/color=((?:\d|[A-F]){2})((?:\d|[A-F]){2})((?:\d|[A-F]){2})/);
    $log->debug("$r, $g, $b");
    
-   # execute the python script to activate the LEDS: TODO we can use also perl and send data to DMX server directly
+   # execute the python script to activate the LEDS
    system("echo 'command -r $r -g $g -b $b'");
    $current_color = "$r$g$b";
    $self->redirect_to('/AmbiLight');
@@ -86,7 +90,7 @@ get '/AmbiLight/login' => sub {
    $self->render(template => "AmbiLightLogin");
 };
 ## }}}
-#
+
 ## {{{ post '/AmbiLight/login'
 post '/AmbiLight/login' => sub {
    my $self = shift;
@@ -94,7 +98,7 @@ post '/AmbiLight/login' => sub {
       $self->redirect_to("/AmbiLight");
    } else {
       my $username =  $self->req->param('username');
-      my $dbh = connect_db("./data/sqlite/ambilight.db");
+      my $dbh = connect_db(DATABASE);
       my $sql = 'SELECT pass FROM users WHERE user = ?';
       my $sth = $dbh->prepare($sql) or die $dbh->errstr;
 
@@ -139,7 +143,7 @@ post '/AmbiLight/add_fav' => sub {
    my $self = shift;
    # check if logged in
    if ($self->session('user') && $self->session('user') ne "") {
-      my $dbh = connect_db("./data/sqlite/ambilight.db");
+      my $dbh = connect_db(DATABASE);
       my $sql = 'INSERT INTO favorites (user, name, red, green, blue) values (?, ?, ?, ?, ?)';
       my $sth = $dbh->prepare($sql) or die $dbh->errstr;
       my $name = $self->req->param('name');
