@@ -20,7 +20,11 @@ sub prep_string {
    return $str;
 }
 
-my $current_color = "6600FF";
+my $current_color = uc sprintf("%02x%02x%02x", 233, 11, 241);
+
+   my $log = Mojo::Log->new;
+    $log->debug("color: $current_color");
+
 get '/AmbiLight/' => sub {
    my $options = prep_string();
    my $c = shift;
@@ -42,9 +46,13 @@ get '/colorize' => sub {
    
    my ($r, $g, $b) = ($self->req->url =~ m/color=((?:\d|[A-F]){2})((?:\d|[A-F]){2})((?:\d|[A-F]){2})/);
    $log->debug("$r, $g, $b");
+
+   my $ri = hex($r);
+   my $gi = hex($g);
+   my $bi = hex($b);
    
    # execute here the python script to activate the leds
-   system("echo 'command -r $r -g $g -b $b'");
+   system("/home/pi/code/plspotify/lib/public/go_constant_color.py $ri $gi $bi");
    $current_color = "$r$g$b";
    $self->redirect_to('/AmbiLight');
 };
@@ -88,6 +96,7 @@ __DATA__
 <script type="text/javascript" src="/jscolor/jscolor.js"></script>
 <input name="color" class="color" value="<%= $current_color %>">
 </p>
+Default color: E90BF1.
 <p>
     <input type="submit" value="Turn lights on">
     <input type="reset" value="Reset selection">
