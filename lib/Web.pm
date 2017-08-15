@@ -1,4 +1,5 @@
 #/usr/bin/env perl
+### TODO: can use PERL bindings for ola
 
 use strict;
 use warnings;
@@ -43,17 +44,37 @@ get '/colorize' => sub {
 
    my (@active_leds) = ($self->req->url =~ m/LED=(\d+)/g);
    $log->debug("@active_leds");
-   
+
    my ($r, $g, $b) = ($self->req->url =~ m/color=((?:\d|[A-F]){2})((?:\d|[A-F]){2})((?:\d|[A-F]){2})/);
    $log->debug("$r, $g, $b");
 
    my $ri = hex($r);
    my $gi = hex($g);
    my $bi = hex($b);
-   
+
    # execute here the python script to activate the leds
    system("/home/pi/code/plspotify/lib/public/go_constant_color.py $ri $gi $bi");
    $current_color = "$r$g$b";
+   $self->redirect_to('/AmbiLight');
+};
+
+get '/control' => sub {
+  my $self = shift;
+  use Mojo::Log;
+  my $log = Mojo::Log->new;
+  my @names=$self->param;
+  $log->debug("@names");
+  $log->debug($self->req->url);
+  if ($#names eq 1) {
+      my $command = @names;
+      if ($command == "reboot") {
+        system("sudo reboot");
+      } elsif ($command == "shutdown") {
+        system("sudo shutdown -h now");
+      } else {
+        $log->debug("Unknown command provided: $command");
+    }
+  }
    $self->redirect_to('/AmbiLight');
 };
 
@@ -76,11 +97,12 @@ __DATA__
    background-image: url("/raspi.jpg");
   }
 </style>
-<title>Select LEDs to colorize</title>
+<title>Ambilight management</title>
 </head>
 <body>
 
-<h1>Select LEDs to colorize</h1>
+<h1> Ambilight control center </h1>
+<h2>LED control (WS2801 pixel string)</h2>
 
 <form action="/colorize" method=get>
   <p>
@@ -91,17 +113,48 @@ __DATA__
       </option>
       % } %>
     </select>
+<p> Select a subset or all LEDs (all selected by default) </p>
 
 <p>
 <script type="text/javascript" src="/jscolor/jscolor.js"></script>
-<input name="color" class="color" value="<%= $current_color %>">
+<script>
+function setFocusToTextBox(){
+    document.getElementById("color").focus();
+    document.getElementById("turnon").focus();
+    document.getElementById("color").focus();
+}
+</script>
+<input name="color" class="color" id="color" value="<%= $current_color %>">
 </p>
 Default color: E90BF1.
+<!-- have to add onclick method fo reset color from input with name color above
+-->
+<!-- onclick="$(color).focus() something like this -->
 <p>
-    <input type="submit" value="Turn lights on">
-    <input type="reset" value="Reset selection">
+    <input type="submit" value="Turn lights on" id="turnon">
+    <input type="reset" value="Reset selection" onclick="setFocusToTextBox()">
 </p>
 </form>
+
+<br />
+<br />
+
+<h2> Power management </h2>
+<form action="/control" method=get>
+<p> Shutdown: 
+<input type="submit" name="shutdown"/>
+(Turn off Raspi)
+</p> 
+</form>
+
+<form action="/control" method="get">
+<p> Reboot:
+<input type="submit" name="reboot"/>
+(Restarts Raspi)
+</p>
+</form>
+
+
 
 
 </body>
